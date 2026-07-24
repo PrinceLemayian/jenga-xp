@@ -1,122 +1,135 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import ConnectWallet from "./components/ConnectWallet";
+import Icon from "./components/Icon";
+import MemberDashboard from "./components/MemberDashboard";
+import OrganizerPanel from "./components/OrganizerPanel";
+import { useJengaXP } from "./hooks/useJengaXP";
+import { useWallet } from "./hooks/useWallet";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function shortAddress(address) {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-export default App
+export default function App() {
+  const [copied, setCopied] = useState(false);
+  const {
+    address,
+    provider,
+    signer,
+    error: walletError,
+    connecting,
+    isWrongNetwork,
+    connect,
+    switchToFuji,
+  } = useWallet();
+
+  const {
+    memberData,
+    communityAverage,
+    memberCount,
+    nextAction,
+    xpToNext,
+    badges,
+    isOrganizer,
+    loading,
+    txLoading,
+    txError,
+    contractsReady,
+    createEvent,
+    checkIn,
+    refetch,
+  } = useJengaXP(signer, provider, address);
+
+  const copyAddress = async () => {
+    if (!address) return;
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  };
+
+  if (!address) {
+    return (
+      <ConnectWallet
+        connecting={connecting}
+        error={walletError}
+        onConnect={connect}
+        onSwitchNetwork={switchToFuji}
+      />
+    );
+  }
+
+  if (isWrongNetwork) {
+    return (
+      <main className="min-h-screen bg-app px-5 py-8 text-primary">
+        <section className="mx-auto flex min-h-[80vh] max-w-md items-center">
+          <div className="surface w-full p-5">
+            <div className="flex items-start gap-3">
+              <Icon className="mt-0.5 text-amber" name="alert" size={22} />
+              <div className="flex-1">
+                <p className="text-[15px] font-semibold">Avalanche Fuji required</p>
+                <p className="mt-1 text-[13px] leading-5 text-secondary">
+                  Switch networks to view your Jenga XP dashboard and submit check-ins.
+                </p>
+              </div>
+            </div>
+            <button className="primary-button mt-5" onClick={switchToFuji} type="button">
+              Switch to Avalanche Fuji
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-app px-5 py-5 text-primary">
+      <div className="mx-auto max-w-md">
+        <header className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-elevated text-xl">🌱</span>
+            <div>
+              <p className="text-[15px] font-bold leading-tight">Jenga XP</p>
+              <p className="text-[12px] text-tertiary">Community reputation</p>
+            </div>
+          </div>
+
+          <button
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
+            onClick={copyAddress}
+            type="button"
+          >
+            <Icon name={copied ? "check" : "copy"} size={14} />
+            {copied ? "Copied" : shortAddress(address)}
+          </button>
+        </header>
+
+        {!contractsReady && (
+          <div className="mb-4 rounded-[16px] border border-subtle bg-elevated-2 p-4 text-[13px] leading-5 text-secondary">
+            Contract addresses are not set yet. The app is showing the first-time member state until deployment is ready.
+          </div>
+        )}
+
+        <MemberDashboard
+          badges={badges}
+          communityAverage={communityAverage}
+          loading={loading}
+          memberCount={memberCount}
+          memberData={memberData}
+          nextAction={nextAction}
+          xpToNext={xpToNext}
+        />
+
+        {isOrganizer && (
+          <OrganizerPanel
+            onCheckIn={checkIn}
+            onCreateEvent={createEvent}
+            onRefetch={refetch}
+            txError={txError}
+            txLoading={txLoading}
+          />
+        )}
+      </div>
+    </main>
+  );
+}
