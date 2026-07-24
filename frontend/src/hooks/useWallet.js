@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { FUJI_CHAIN_ID, FUJI_CHAIN_ID_HEX, FUJI_NETWORK } from "../constants";
 
+/**
+ * Ethers.js v6 Wallet Connection Hook
+ * Conforms strictly to official Ethers.js v6 BrowserProvider & Signer specifications.
+ */
 export function useWallet() {
   const [address, setAddress] = useState(null);
   const [provider, setProvider] = useState(null);
@@ -13,17 +17,23 @@ export function useWallet() {
   const hydrate = useCallback(async () => {
     if (!window.ethereum) return;
 
-    const web3Provider = new ethers.BrowserProvider(window.ethereum);
-    const network = await web3Provider.getNetwork();
-    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    try {
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await web3Provider.getNetwork();
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
 
-    setProvider(web3Provider);
-    setChainId(Number(network.chainId));
+      setProvider(web3Provider);
+      setChainId(Number(network.chainId));
 
-    if (accounts.length > 0) {
-      const web3Signer = await web3Provider.getSigner();
-      setSigner(web3Signer);
-      setAddress(await web3Signer.getAddress());
+      if (accounts.length > 0) {
+        // Ethers v6: provider.getSigner() returns a Promise<JsonRpcSigner>
+        const web3Signer = await web3Provider.getSigner();
+        const userAddress = await web3Signer.getAddress();
+        setSigner(web3Signer);
+        setAddress(userAddress);
+      }
+    } catch (err) {
+      console.warn("Hydrate wallet error:", err);
     }
   }, []);
 
@@ -43,13 +53,18 @@ export function useWallet() {
       return true;
     } catch (err) {
       if (err.code === 4902) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [FUJI_NETWORK],
-        });
-        await hydrate();
-        setError(null);
-        return true;
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [FUJI_NETWORK],
+          });
+          await hydrate();
+          setError(null);
+          return true;
+        } catch (addErr) {
+          setError(addErr.message || "Failed to add Avalanche Fuji network to wallet.");
+          return false;
+        }
       }
 
       setError(err.message || "Could not switch to Avalanche Fuji.");
@@ -65,37 +80,66 @@ export function useWallet() {
       if (!window.ethereum) throw new Error("MetaMask is required to connect.");
 
       await window.ethereum.request({ method: "eth_requestAccounts" });
-      await hydrate();
-
+      
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const network = await web3Provider.getNetwork();
+      setProvider(web3Provider);
+      setChainId(Number(network.chainId));
 
       if (Number(network.chainId) !== FUJI_CHAIN_ID) {
         await switchToFuji();
       }
+
+      const web3Signer = await web3Provider.getSigner();
+      const userAddress = await web3Signer.getAddress();
+      setSigner(web3Signer);
+      setAddress(userAddress);
     } catch (err) {
-      setError(err.message || "Could not connect wallet.");
+      if (err.code === "ACTION_REJECTED" || err.code === 4001) {
+        setError("Connection request cancelled in wallet.");
+      } else {
+        setError(err.message || "Could not connect wallet.");
+      }
     } finally {
       setConnecting(false);
     }
-  }, [hydrate, switchToFuji]);
+  }, [switchToFuji]);
+
+  const disconnect = useCallback(() => {
+    setAddress(null);
+    setProvider(null);
+    setSigner(null);
+    setChainId(null);
+    setError(null);
+  }, []);
 
   useEffect(() => {
-    hydrate().catch(() => {});
+    hydrate();
 
     if (!window.ethereum) return undefined;
 
-    const handleAccounts = () => hydrate().catch(() => {});
-    const handleChain = () => hydrate().catch(() => {});
+    const handleAccountsChanged = (accounts) => {
+      if (accounts.length === 0) {
+        disconnect();
+      } else {
+        hydrate();
+      }
+    };
 
-    window.ethereum.on("accountsChanged", handleAccounts);
-    window.ethereum.on("chainChanged", handleChain);
+    const handleChainChanged = () => {
+      window.location.reload();
+    };
+
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
 
     return () => {
-      window.ethereum.removeListener("accountsChanged", handleAccounts);
-      window.ethereum.removeListener("chainChanged", handleChain);
+      if (window.ethereum.removeListener) {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+      }
     };
-  }, [hydrate]);
+  }, [hydrate, disconnect]);
 
   return {
     address,
@@ -106,6 +150,7 @@ export function useWallet() {
     connecting,
     isWrongNetwork: Boolean(address && chainId && chainId !== FUJI_CHAIN_ID),
     connect,
+    disconnect,
     switchToFuji,
   };
 }
