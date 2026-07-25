@@ -1,37 +1,35 @@
-import React from "react";
 import { QRCodeSVG } from "qrcode.react";
+import Icon from "./Icon";
 
 export default function QRCodeModal({ title, subtitle, value, onClose }) {
   if (!value) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="surface p-6 max-w-sm w-full space-y-4 text-center relative animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
+      <div className="surface relative w-full max-w-sm space-y-4 p-6 text-center animate-in fade-in">
         <button
+          className="absolute right-4 top-4 rounded-lg p-1 text-secondary hover:text-primary"
           onClick={onClose}
-          className="absolute top-4 right-4 text-secondary hover:text-primary p-1 rounded-lg text-sm"
+          type="button"
         >
-          ✕
+          <Icon name="x" size={16} />
         </button>
 
         <div>
-          <span className="text-3xl inline-block mb-1">📱</span>
-          <h3 className="text-[17px] font-bold text-primary">{title || "Event Check-In QR Code"}</h3>
-          <p className="text-[12px] text-secondary mt-1">{subtitle || "Scan this QR code with your camera to check in."}</p>
+          <span className="mb-1 inline-block text-3xl">📱</span>
+          <h3 className="text-[17px] font-bold text-primary">{title || "QR Code"}</h3>
+          <p className="mt-1 text-[12px] leading-5 text-secondary">{subtitle}</p>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl inline-block mx-auto border border-gray-200">
-          <QRCodeSVG value={value} size={200} level="H" includeMargin={true} />
+        <div className="mx-auto inline-block rounded-2xl border border-gray-200 bg-white p-4">
+          <QRCodeSVG includeMargin level="H" size={200} value={value} />
         </div>
 
-        <div className="rounded-[14px] border border-subtle bg-elevated-2 p-3 text-[11px] text-tertiary font-mono break-all text-center">
+        <div className="break-all rounded-[14px] border border-subtle bg-elevated-2 p-3 text-center font-mono text-[11px] text-tertiary">
           {value}
         </div>
 
-        <button
-          onClick={onClose}
-          className="secondary-button w-full !h-10 !text-[13px]"
-        >
+        <button className="secondary-button w-full !h-10 !text-[13px]" onClick={onClose} type="button">
           Close QR Code
         </button>
       </div>

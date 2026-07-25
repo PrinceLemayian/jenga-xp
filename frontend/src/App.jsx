@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import ConnectWallet from "./components/ConnectWallet";
 import Icon from "./components/Icon";
 import MemberDashboard from "./components/MemberDashboard";
@@ -15,7 +15,7 @@ function shortAddress(address) {
 
 export default function App() {
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState("member"); // 'member' | 'organizer'
+  const [activeTab, setActiveTab] = useState("member");
   const [walletQrVisible, setWalletQrVisible] = useState(false);
   const [scannerVisible, setScannerVisible] = useState(false);
   const [scannedEventId, setScannedEventId] = useState(null);
@@ -50,14 +50,12 @@ export default function App() {
     refetch,
   } = useJengaXP(signer, provider, address);
 
-  // Default organizer address to organizer tab if organizer wallet connects
   useEffect(() => {
-    if (isOrganizer) {
-      setActiveTab("organizer");
+    if (!isOrganizer && activeTab === "organizer") {
+      setActiveTab("member");
     }
-  }, [isOrganizer]);
+  }, [activeTab, isOrganizer]);
 
-  // Check URL query parameters for scanned eventId
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has("eventId")) {
@@ -75,27 +73,14 @@ export default function App() {
 
   const handleScanSuccess = (decodedText) => {
     setScannerVisible(false);
-    let scanned = decodedText.trim();
+    const scanned = decodedText.trim();
+
     if (scanned.includes("eventId=")) {
       const urlParams = new URLSearchParams(scanned.split("?")[1]);
       if (urlParams.has("eventId")) {
         setScannedEventId(urlParams.get("eventId"));
         setActiveTab("member");
       }
-    } else if (scanned.startsWith("0x")) {
-      if (isOrganizer && activeTab === "organizer") {
-        // Handled in OrganizerPanel
-      } else {
-        alert(`Scanned Member Wallet: ${scanned}`);
-      }
-    }
-  };
-
-  const handleCheckInScannedEvent = async (eventId) => {
-    if (!address) return;
-    const res = await checkIn(address, eventId);
-    if (res && res.success) {
-      setScannedEventId(null);
     }
   };
 
@@ -114,13 +99,13 @@ export default function App() {
     return (
       <main className="min-h-screen bg-app px-5 py-8 text-primary">
         <section className="mx-auto flex min-h-[80vh] max-w-md items-center">
-          <div className="surface w-full p-5 text-center space-y-4">
+          <div className="surface w-full space-y-4 p-5 text-center">
             <div className="flex items-start justify-center gap-3">
               <Icon className="mt-0.5 text-amber" name="alert" size={24} />
               <div className="text-left">
                 <p className="text-[16px] font-bold">Avalanche Fuji Network Required</p>
                 <p className="mt-1 text-[13px] leading-5 text-secondary">
-                  Please switch your MetaMask network to Avalanche Fuji Testnet (Chain ID 43113) to interact with Jenga XP.
+                  Switch MetaMask to Avalanche Fuji Testnet, Chain ID 43113, to use Jenga XP.
                 </p>
               </div>
             </div>
@@ -136,10 +121,9 @@ export default function App() {
   return (
     <main className="min-h-screen bg-app px-4 py-5 text-primary selection:bg-amber selection:text-black">
       <div className="mx-auto max-w-md space-y-5">
-        {/* Header Bar */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-elevated text-2xl border border-subtle">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl border border-subtle bg-elevated text-2xl">
               🌱
             </span>
             <div>
@@ -152,19 +136,19 @@ export default function App() {
             <button
               className="inline-flex h-9 items-center gap-1 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
               onClick={() => setScannerVisible(true)}
-              type="button"
               title="Scan QR Code"
+              type="button"
             >
-              <span>📷</span> Scan
+              Scan
             </button>
 
             <button
               className="inline-flex h-9 items-center gap-1 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
               onClick={() => setWalletQrVisible(true)}
-              type="button"
               title="My Wallet QR"
+              type="button"
             >
-              <span>📱</span> QR
+              QR
             </button>
 
             <button
@@ -178,41 +162,40 @@ export default function App() {
           </div>
         </header>
 
-        {/* Dedicated Role Switcher Tabs */}
-        <nav className="surface p-1.5 flex items-center gap-1">
-          <button
-            onClick={() => setActiveTab("member")}
-            className={`flex-1 py-2.5 text-[13px] font-bold rounded-[14px] transition-all flex items-center justify-center gap-2 ${
-              activeTab === "member"
-                ? "bg-elevated-2 text-primary shadow-sm border border-subtle"
-                : "text-tertiary hover:text-secondary"
-            }`}
-          >
-            <span>👤</span> Member Portal
-          </button>
+        {isOrganizer && (
+          <nav className="surface flex items-center gap-1 p-1.5">
+            <button
+              className={`flex-1 rounded-[14px] py-2.5 text-[13px] font-bold transition-all ${
+                activeTab === "member"
+                  ? "border border-subtle bg-elevated-2 text-primary shadow-sm"
+                  : "text-tertiary hover:text-secondary"
+              }`}
+              onClick={() => setActiveTab("member")}
+              type="button"
+            >
+              Member Portal
+            </button>
 
-          <button
-            onClick={() => setActiveTab("organizer")}
-            className={`flex-1 py-2.5 text-[13px] font-bold rounded-[14px] transition-all flex items-center justify-center gap-2 relative ${
-              activeTab === "organizer"
-                ? "bg-elevated-2 text-amber shadow-sm border border-amber/30"
-                : "text-tertiary hover:text-secondary"
-            }`}
-          >
-            <span>👑</span> Organizer Hub
-            {isOrganizer && (
-              <span className="w-2 h-2 rounded-full bg-amber animate-pulse" />
-            )}
-          </button>
-        </nav>
+            <button
+              className={`flex-1 rounded-[14px] py-2.5 text-[13px] font-bold transition-all ${
+                activeTab === "organizer"
+                  ? "border border-amber/30 bg-elevated-2 text-amber shadow-sm"
+                  : "text-tertiary hover:text-secondary"
+              }`}
+              onClick={() => setActiveTab("organizer")}
+              type="button"
+            >
+              Organizer Hub
+            </button>
+          </nav>
+        )}
 
         {!contractsReady && (
           <div className="rounded-[16px] border border-subtle bg-elevated-2 p-4 text-[13px] leading-5 text-secondary">
-            Contract addresses are not configured. Launching preview mode.
+            Contract addresses are not configured. Add them to frontend/.env after deployment.
           </div>
         )}
 
-        {/* Tab 1: Member Page */}
         {activeTab === "member" && (
           <MemberDashboard
             badges={badges}
@@ -221,42 +204,39 @@ export default function App() {
             memberCount={memberCount}
             memberData={memberData}
             nextAction={nextAction}
-            xpToNext={xpToNext}
-            scannedEventId={scannedEventId}
             onOpenScanner={() => setScannerVisible(true)}
-            onOpenWalletQr={() => setWalletQrVisible(false)}
-            onCheckInScannedEvent={handleCheckInScannedEvent}
-            txLoading={txLoading}
+            onOpenWalletQr={() => setWalletQrVisible(true)}
+            scannedEventId={scannedEventId}
+            xpToNext={xpToNext}
           />
         )}
 
-        {/* Tab 2: Organizer Page */}
-        {activeTab === "organizer" && (
+        {isOrganizer && activeTab === "organizer" && (
           <OrganizerPanel
+            eventsList={eventsList}
             onCheckIn={checkIn}
             onCreateEvent={createEvent}
             onRefetch={refetch}
-            eventsList={eventsList}
             txError={txError}
-            txLoading={txLoading}
             txHash={txHash}
+            txLoading={txLoading}
           />
         )}
       </div>
 
       {walletQrVisible && (
         <QRCodeModal
-          title="My Wallet QR Code"
-          subtitle="Show this QR code to event organizers for instant check-in."
-          value={address}
           onClose={() => setWalletQrVisible(false)}
+          subtitle="Show this QR code to event organizers for instant check-in."
+          title="My Wallet QR Code"
+          value={address}
         />
       )}
 
       {scannerVisible && (
         <QRScannerModal
-          onScanSuccess={handleScanSuccess}
           onClose={() => setScannerVisible(false)}
+          onScanSuccess={handleScanSuccess}
         />
       )}
     </main>

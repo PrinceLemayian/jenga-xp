@@ -1,4 +1,3 @@
-import React from "react";
 import { LEVELS } from "../constants";
 import BadgeCollection from "./BadgeCollection";
 import CommunityStats from "./CommunityStats";
@@ -26,18 +25,16 @@ function DashboardSkeleton() {
 }
 
 export default function MemberDashboard({
-  badges,
-  communityAverage,
+  badges = [],
+  communityAverage = 0,
   loading,
-  memberCount,
+  memberCount = 0,
   memberData,
   nextAction,
   xpToNext,
   scannedEventId,
   onOpenScanner,
   onOpenWalletQr,
-  onCheckInScannedEvent,
-  txLoading,
 }) {
   if (loading) return <DashboardSkeleton />;
 
@@ -50,71 +47,59 @@ export default function MemberDashboard({
 
   return (
     <div className="space-y-4 animate-in fade-in">
-      {/* Scanned Event Check-In Action Card */}
       {scannedEventId !== null && scannedEventId !== undefined && (
-        <div className="surface p-5 border-amber/40 bg-amber/10 space-y-3 animate-in slide-in-from-top-2">
-          <div className="flex items-center justify-between">
+        <div className="surface space-y-3 border-amber/40 bg-amber/10 p-5 animate-in slide-in-from-top-2">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-3xl">🎟️</span>
               <div>
                 <span className="eyebrow text-amber">Event QR Scanned</span>
-                <h3 className="text-[16px] font-extrabold text-primary">Check-In for Event #{scannedEventId}</h3>
+                <h3 className="text-[16px] font-extrabold text-primary">Event #{scannedEventId}</h3>
               </div>
             </div>
-            <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full">
-              +{data.streak >= 3 ? "150 XP Bonus" : "100 XP"}
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-400">
+              Ready
             </span>
           </div>
 
-          <p className="text-[13px] text-secondary">
-            Present your QR code to the organizer or submit your check-in directly below to claim your XP and mint milestone badges.
+          <p className="text-[13px] leading-5 text-secondary">
+            Show your wallet QR code to the organizer. They will complete the on-chain check-in from the Organizer Hub.
           </p>
 
           <div className="flex items-center gap-2 pt-1">
-            <button
-              onClick={() => onCheckInScannedEvent && onCheckInScannedEvent(scannedEventId)}
-              disabled={txLoading}
-              className="primary-button !h-10 !text-[13px] flex-1"
-            >
-              {txLoading ? "Submitting Check-In..." : "⚡ Claim Check-In & Earn XP"}
+            <button className="primary-button !h-10 flex-1 !text-[13px]" onClick={onOpenWalletQr} type="button">
+              Show My Wallet QR
             </button>
-            <button
-              onClick={onOpenWalletQr}
-              className="secondary-button !h-10 !text-[13px]"
-            >
-              📱 Show My QR
+            <button className="secondary-button !h-10 !text-[13px]" onClick={onOpenScanner} type="button">
+              Scan Again
             </button>
           </div>
         </div>
       )}
 
-      {/* First-Time Member Welcome Card */}
       {!data.exists && (
-        <div className="surface p-5 text-center space-y-3 border-subtle bg-elevated-2">
-          <span className="text-3xl inline-block">👋</span>
+        <div className="surface space-y-3 border-subtle bg-elevated-2 p-5 text-center">
+          <span className="inline-block text-3xl">👋</span>
           <h3 className="text-[17px] font-extrabold text-primary">Welcome to Jenga XP</h3>
-          <p className="text-[13px] text-secondary max-w-sm mx-auto">
-            You haven't been checked in to a community event yet. Ask an organizer to check your wallet address in or scan an event QR code to earn your first XP!
+          <p className="mx-auto max-w-sm text-[13px] leading-5 text-secondary">
+            You have not been checked in yet. Ask an organizer to scan your wallet QR code to earn your first XP.
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
-              onClick={onOpenScanner}
-              className="primary-button !h-10 !w-auto !px-5 !text-[13px] inline-flex items-center gap-1.5"
-            >
-              <span>📷</span> Scan Event QR
-            </button>
-            <button
+              className="primary-button !h-10 !w-auto !px-5 !text-[13px]"
               onClick={onOpenWalletQr}
-              className="secondary-button !h-10 !text-[13px] inline-flex items-center gap-1.5"
+              type="button"
             >
-              <span>📱</span> My Wallet QR
+              My Wallet QR
+            </button>
+            <button className="secondary-button !h-10 !text-[13px]" onClick={onOpenScanner} type="button">
+              Scan Event QR
             </button>
           </div>
         </div>
       )}
 
-      {/* Hero Level Banner */}
-      <section className="surface elevated-hero p-6 relative overflow-hidden">
+      <section className="surface elevated-hero relative overflow-hidden p-6">
         <div className="flex items-start gap-4">
           <div
             className="grid h-16 w-16 shrink-0 place-items-center rounded-[20px] text-5xl transition-transform hover:scale-105"
@@ -137,21 +122,15 @@ export default function MemberDashboard({
             >
               {currentLevel.name}
             </h2>
-            <p className="text-[12px] text-tertiary mt-1">Level {data.level} of 5</p>
+            <p className="mt-1 text-[12px] text-tertiary">Level {data.level} of 5</p>
           </div>
         </div>
 
         <div className="mt-8">
-          <XPBar
-            currentLevel={data.level}
-            currentXP={data.xp}
-            nextLevel={nextLevel}
-            xpToNext={xpToNext}
-          />
+          <XPBar currentLevel={data.level} currentXP={data.xp} nextLevel={nextLevel} xpToNext={xpToNext} />
         </div>
       </section>
 
-      {/* Routledge Feedback System: Three Core Surfaces */}
       <LevelLadder currentLevel={data.level} />
       <CommunityStats attendance={data.totalAttendance} average={communityAverage} memberCount={memberCount} />
       <NextActionCard message={displayAction} />

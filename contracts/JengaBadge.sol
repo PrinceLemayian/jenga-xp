@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
  * Transfers are permanently disabled.
  */
 contract JengaBadge is ERC721 {
+    address public owner;
     address public jengaXPContract;
     uint256 private _tokenIdCounter;
 
@@ -32,11 +33,15 @@ contract JengaBadge is ERC721 {
     error AlreadySet();
     error BadgeAlreadyMinted();
     error InvalidLevel();
+    error OnlyOwnerAllowed();
     error SoulboundTransferBlocked();
 
-    constructor() ERC721("Jenga XP Badge", "JXPB") {}
+    constructor() ERC721("Jenga XP Badge", "JXPB") {
+        owner = msg.sender;
+    }
 
     function setJengaXPContract(address _contract) external {
+        if (msg.sender != owner) revert OnlyOwnerAllowed();
         if (jengaXPContract != address(0)) revert AlreadySet();
         require(_contract != address(0), "Invalid address");
         jengaXPContract = _contract;
@@ -65,6 +70,12 @@ contract JengaBadge is ERC721 {
 
     function safeTransferFrom(address, address, uint256, bytes memory) public pure override {
         revert SoulboundTransferBlocked();
+    }
+
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        address from = _ownerOf(tokenId);
+        if (from != address(0) && to != address(0)) revert SoulboundTransferBlocked();
+        return super._update(to, tokenId, auth);
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {

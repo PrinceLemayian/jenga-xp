@@ -26,6 +26,16 @@ describe("Jenga XP Smart Contracts Suite", function () {
       expect(await jenga.badgeContract()).to.equal(await badge.getAddress());
       expect(await badge.jengaXPContract()).to.equal(await jenga.getAddress());
     });
+
+    it("Should only allow the badge owner to link JengaXP", async function () {
+      const FreshBadge = await ethers.getContractFactory("JengaBadge");
+      const freshBadge = await FreshBadge.deploy();
+      await freshBadge.waitForDeployment();
+
+      await expect(
+        freshBadge.connect(member1).setJengaXPContract(await jenga.getAddress())
+      ).to.be.revertedWithCustomError(freshBadge, "OnlyOwnerAllowed");
+    });
   });
 
   describe("Event Creation & Organizer Controls", function () {
@@ -43,6 +53,14 @@ describe("Jenga XP Smart Contracts Suite", function () {
     it("Should revert if non-organizer tries to create event", async function () {
       await expect(
         jenga.connect(member1).createEvent("Unauthorized Event")
+      ).to.be.revertedWithCustomError(jenga, "OnlyOrganizerAllowed");
+    });
+
+    it("Should revert if non-organizer tries to check in a member", async function () {
+      await jenga.createEvent("Organizer Event");
+
+      await expect(
+        jenga.connect(member1).checkIn(member1.address, 0)
       ).to.be.revertedWithCustomError(jenga, "OnlyOrganizerAllowed");
     });
   });

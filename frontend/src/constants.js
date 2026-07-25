@@ -1,7 +1,5 @@
-export const JENGA_XP_ADDRESS =
-  import.meta.env.VITE_JENGA_XP_ADDRESS || "0x5753A16f0fDbf255d08ac6Ecf1a6EAE24d60a5c8";
-export const JENGA_BADGE_ADDRESS =
-  import.meta.env.VITE_JENGA_BADGE_ADDRESS || "0xb048deA0FAc2b45752DA8eAE77C6e32042408955";
+export const JENGA_XP_ADDRESS = import.meta.env.VITE_JENGA_XP_ADDRESS || "";
+export const JENGA_BADGE_ADDRESS = import.meta.env.VITE_JENGA_BADGE_ADDRESS || "";
 
 export const FUJI_CHAIN_ID = 43113;
 export const FUJI_CHAIN_ID_HEX = "0xA869";
@@ -9,7 +7,7 @@ export const FUJI_CHAIN_ID_HEX = "0xA869";
 export const FUJI_RPC_URLS = [
   "https://api.avax-test.network/ext/bc/C/rpc",
   "https://avalanche-fuji-c-chain-rpc.publicnode.com",
-  "https://rpc.ankr.com/avalanche_fuji-c"
+  "https://rpc.ankr.com/avalanche_fuji-c",
 ];
 
 export const FUJI_NETWORK = {
@@ -46,7 +44,7 @@ export const JENGA_XP_ABI = [
   "function organizer() view returns (address)",
   "event CheckedIn(address indexed member, uint256 indexed eventId, uint256 xpEarned, uint256 newXP)",
   "event LevelUp(address indexed member, uint8 newLevel, string levelName)",
-  "event EventCreated(uint256 indexed eventId, string name)"
+  "event EventCreated(uint256 indexed eventId, string name)",
 ];
 
 export const JENGA_BADGE_ABI = [

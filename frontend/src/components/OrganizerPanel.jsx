@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { isAddress } from "ethers";
+import { useState } from "react";
 import Icon from "./Icon";
 import QRCodeModal from "./QRCodeModal";
 import QRScannerModal from "./QRScannerModal";
@@ -16,273 +17,265 @@ export default function OrganizerPanel({
   const [selectedEventId, setSelectedEventId] = useState("0");
   const [qrCodeData, setQrCodeData] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
+  const [localError, setLocalError] = useState(null);
 
-  const handleCreateEvent = async (e) => {
-    e.preventDefault();
+  const handleCreateEvent = async (event) => {
+    event.preventDefault();
+    setLocalError(null);
     if (!eventName.trim()) return;
-    const res = await onCreateEvent(eventName.trim());
-    if (res && res.success) {
-      setEventName("");
-    }
+
+    const result = await onCreateEvent(eventName.trim());
+    if (result?.success) setEventName("");
   };
 
-  const handleCheckIn = async (e) => {
-    e.preventDefault();
-    if (!memberAddress.trim()) return;
-    const res = await onCheckIn(memberAddress.trim(), selectedEventId);
-    if (res && res.success) {
-      setMemberAddress("");
+  const handleCheckIn = async (event) => {
+    event.preventDefault();
+    setLocalError(null);
+
+    if (!isAddress(memberAddress.trim())) {
+      setLocalError("Enter a valid wallet address before checking in a member.");
+      return;
     }
+
+    const result = await onCheckIn(memberAddress.trim(), selectedEventId);
+    if (result?.success) setMemberAddress("");
   };
 
   const handleScanMemberSuccess = (scannedText) => {
     setShowScanner(false);
-    let addr = scannedText.trim();
-    if (addr.includes("ethereum:")) {
-      addr = addr.split("ethereum:")[1].split("?")[0];
-    } else if (addr.includes("eventId=")) {
-      const urlParams = new URLSearchParams(addr.split("?")[1]);
-      if (urlParams.has("eventId")) {
-        setSelectedEventId(urlParams.get("eventId"));
-      }
+    setLocalError(null);
+
+    let value = scannedText.trim();
+    if (value.includes("ethereum:")) {
+      value = value.split("ethereum:")[1].split("?")[0];
     }
-    if (addr.startsWith("0x")) {
-      setMemberAddress(addr);
+
+    if (isAddress(value)) {
+      setMemberAddress(value);
+      return;
     }
+
+    setLocalError("That QR code did not contain a valid wallet address.");
   };
 
   const showEventQR = (eventId, name) => {
-    const checkInPayload = `${window.location.origin}/?eventId=${eventId}`;
     setQrCodeData({
       title: `Event #${eventId}: ${name}`,
-      subtitle: "Members can scan this QR code with their camera to check in.",
-      value: checkInPayload,
+      subtitle: "Members can scan this QR code, then show their wallet QR to the organizer.",
+      value: `${window.location.origin}/?eventId=${eventId}`,
     });
   };
 
+  const selectedEvent = eventsList.find((event) => String(event.id) === String(selectedEventId));
+
   return (
     <div className="space-y-5 animate-in fade-in">
-      {/* Workspace Banner */}
-      <section className="surface p-6 relative overflow-hidden bg-gradient-to-br from-[#16161A] to-[#1E1E24] border-amber/30">
-        <div className="flex items-center justify-between">
+      <section className="surface relative overflow-hidden border-amber/30 bg-gradient-to-br from-[#16161A] to-[#1E1E24] p-6">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber/10 text-amber text-2xl border border-amber/20">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl border border-amber/20 bg-amber/10 text-2xl text-amber">
               👑
             </div>
             <div>
               <span className="eyebrow text-amber">Organizer Workspace</span>
-              <h2 className="text-[22px] font-extrabold text-primary leading-tight">Event Management Hub</h2>
+              <h2 className="text-[22px] font-extrabold leading-tight text-primary">Event Management Hub</h2>
             </div>
           </div>
-          <span className="hidden sm:inline-flex rounded-full border border-amber/40 bg-amber/10 px-3 py-1 text-[11px] font-bold text-amber">
+          <span className="hidden rounded-full border border-amber/40 bg-amber/10 px-3 py-1 text-[11px] font-bold text-amber sm:inline-flex">
             Authority Active
           </span>
         </div>
 
-        <p className="mt-3 text-[13px] text-secondary leading-relaxed max-w-md">
-          Create events, display live check-in QR codes for members to scan, and mint soulbound badges directly on Avalanche Fuji.
+        <p className="mt-3 max-w-md text-[13px] leading-relaxed text-secondary">
+          Create events, display check-in QR codes, and check members in on Avalanche Fuji.
         </p>
 
-        {/* Quick Stats Grid */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3 border-t border-subtle pt-4">
-          <div className="rounded-[14px] bg-elevated-2 p-3 text-center border border-subtle">
+        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-subtle pt-4 sm:grid-cols-3">
+          <div className="rounded-[14px] border border-subtle bg-elevated-2 p-3 text-center">
             <p className="eyebrow">Created Events</p>
             <p className="mt-1 text-2xl font-extrabold text-primary">{eventsList.length}</p>
           </div>
-          <div className="rounded-[14px] bg-elevated-2 p-3 text-center border border-subtle">
+          <div className="rounded-[14px] border border-subtle bg-elevated-2 p-3 text-center">
             <p className="eyebrow">Target Network</p>
             <p className="mt-1 text-[13px] font-bold text-amber">Avalanche Fuji</p>
           </div>
-          <div className="col-span-2 sm:col-span-1 rounded-[14px] bg-elevated-2 p-3 text-center border border-subtle">
-            <p className="eyebrow">Badges Standard</p>
-            <p className="mt-1 text-[13px] font-bold text-purple-400">ERC-721 Soulbound</p>
+          <div className="col-span-2 rounded-[14px] border border-subtle bg-elevated-2 p-3 text-center sm:col-span-1">
+            <p className="eyebrow">Badges</p>
+            <p className="mt-1 text-[13px] font-bold text-purple-400">Soulbound NFTs</p>
           </div>
         </div>
       </section>
 
-      {/* Transaction Notifications */}
       {txHash && (
-        <div className="rounded-[16px] border border-emerald-500/30 bg-emerald-500/10 p-4 text-[13px] text-emerald-400 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">✅</span>
-            <span>Transaction Confirmed On-Chain!</span>
-          </div>
+        <div className="flex items-center justify-between gap-3 rounded-[16px] border border-emerald-500/30 bg-emerald-500/10 p-4 text-[13px] text-emerald-400">
+          <span className="inline-flex items-center gap-2">
+            <Icon name="check" size={16} />
+            Transaction confirmed on-chain.
+          </span>
           <a
+            className="inline-flex items-center gap-1 text-[12px] font-bold underline hover:text-emerald-300"
             href={`https://testnet.snowtrace.io/tx/${txHash}`}
-            target="_blank"
             rel="noreferrer"
-            className="font-bold underline hover:text-emerald-300 flex items-center gap-1 text-[12px]"
+            target="_blank"
           >
-            Snowtrace ↗
+            Snowtrace
+            <Icon name="external" size={12} />
           </a>
         </div>
       )}
 
-      {txError && (
+      {(txError || localError) && (
         <div className="rounded-[16px] border border-red-500/30 bg-red-500/10 p-4 text-[13px] text-red-400">
-          <p className="font-bold">Transaction Reverted:</p>
-          <p className="break-all mt-0.5 text-[12px]">{txError}</p>
+          <p className="font-bold">Action failed</p>
+          <p className="mt-0.5 break-all text-[12px]">{localError || txError}</p>
         </div>
       )}
 
-      {/* 2-Column Action Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Section 1: Create Event */}
-        <form onSubmit={handleCreateEvent} className="surface p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-subtle pb-3">
-            <span className="text-lg">📅</span>
-            <h3 className="text-[15px] font-bold text-primary">1. Create New Event</h3>
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <form className="surface space-y-4 p-5" onSubmit={handleCreateEvent}>
+          <div className="border-b border-subtle pb-3">
+            <h3 className="text-[15px] font-bold text-primary">Create New Event</h3>
           </div>
 
           <div>
-            <label className="eyebrow block mb-1.5">Event Name</label>
+            <label className="eyebrow mb-1.5 block">Event Name</label>
             <input
-              type="text"
-              placeholder="e.g. Avalanche Fuji Hackathon Meetup"
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
               className="input-field text-[14px]"
               disabled={txLoading}
+              onChange={(event) => setEventName(event.target.value)}
+              placeholder="Avalanche Fuji Hackathon Meetup"
               required
+              type="text"
+              value={eventName}
             />
           </div>
 
           <button
-            type="submit"
+            className="primary-button !h-11 w-full !text-[14px]"
             disabled={txLoading || !eventName.trim()}
-            className="primary-button !h-11 !text-[14px] w-full"
+            type="submit"
           >
             {txLoading ? (
               <span className="inline-flex items-center gap-2">
                 <Icon className="animate-spin" name="loader" size={16} />
-                Broadcasting to Fuji...
+                Broadcasting to Fuji
               </span>
             ) : (
-              "+ Create Event On-Chain"
+              "Create Event On-Chain"
             )}
           </button>
         </form>
 
-        {/* Section 2: Check-In Member */}
-        <form onSubmit={handleCheckIn} className="surface p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-subtle pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎟️</span>
-              <h3 className="text-[15px] font-bold text-primary">2. Check In Member</h3>
-            </div>
+        <form className="surface space-y-4 p-5" onSubmit={handleCheckIn}>
+          <div className="flex items-center justify-between gap-3 border-b border-subtle pb-3">
+            <h3 className="text-[15px] font-bold text-primary">Check In Member</h3>
             <button
-              type="button"
+              className="secondary-button !h-8 !px-2.5 !text-[11px] text-amber"
               onClick={() => setShowScanner(true)}
-              className="secondary-button !h-8 !px-2.5 !text-[11px] border-amber/30 text-amber"
+              type="button"
             >
-              📷 Scan Member QR
+              Scan Member QR
             </button>
           </div>
 
           <div>
-            <label className="eyebrow block mb-1.5">Select Active Event</label>
+            <label className="eyebrow mb-1.5 block">Select Active Event</label>
             {eventsList.length > 0 ? (
               <div className="space-y-2">
                 <select
-                  value={selectedEventId}
-                  onChange={(e) => setSelectedEventId(e.target.value)}
                   className="input-field text-[14px]"
                   disabled={txLoading}
+                  onChange={(event) => setSelectedEventId(event.target.value)}
+                  value={selectedEventId}
                 >
-                  {eventsList.map((evt) => (
-                    <option key={evt.id} value={evt.id}>
-                      Event #{evt.id}: {evt.name} ({evt.attendeeCount} attended)
+                  {eventsList.map((event) => (
+                    <option key={event.id} value={event.id}>
+                      Event #{event.id}: {event.name} ({event.attendeeCount} attended)
                     </option>
                   ))}
                 </select>
 
-                {eventsList.find((e) => String(e.id) === String(selectedEventId)) && (
+                {selectedEvent && (
                   <button
+                    className="secondary-button w-full !h-9 !text-[12px] font-bold text-amber"
+                    onClick={() => showEventQR(selectedEvent.id, selectedEvent.name)}
                     type="button"
-                    onClick={() => {
-                      const evt = eventsList.find((e) => String(e.id) === String(selectedEventId));
-                      showEventQR(evt.id, evt.name);
-                    }}
-                    className="secondary-button w-full !h-9 !text-[12px] border-amber/40 text-amber font-bold"
                   >
-                    📱 Display Event Check-In QR Code
+                    Display Event Check-In QR Code
                   </button>
                 )}
               </div>
             ) : (
               <input
-                type="number"
-                min="0"
-                value={selectedEventId}
-                onChange={(e) => setSelectedEventId(e.target.value)}
-                placeholder="Event ID (0)"
                 className="input-field text-[14px]"
                 disabled={txLoading}
+                min="0"
+                onChange={(event) => setSelectedEventId(event.target.value)}
+                placeholder="Event ID"
                 required
+                type="number"
+                value={selectedEventId}
               />
             )}
           </div>
 
           <div>
-            <label className="eyebrow block mb-1.5">Member Wallet Address</label>
+            <label className="eyebrow mb-1.5 block">Member Wallet Address</label>
             <input
-              type="text"
-              placeholder="0x..."
-              value={memberAddress}
-              onChange={(e) => setMemberAddress(e.target.value)}
-              className="input-field text-[13px] font-mono"
+              className="input-field font-mono text-[13px]"
               disabled={txLoading}
+              onChange={(event) => setMemberAddress(event.target.value)}
+              placeholder="0x..."
               required
+              type="text"
+              value={memberAddress}
             />
           </div>
 
           <button
-            type="submit"
+            className="primary-button !h-11 w-full !text-[14px]"
             disabled={txLoading || !memberAddress.trim()}
-            className="primary-button !h-11 !text-[14px] w-full"
+            type="submit"
           >
             {txLoading ? (
               <span className="inline-flex items-center gap-2">
                 <Icon className="animate-spin" name="loader" size={16} />
-                Minting & Checking In...
+                Checking in
               </span>
             ) : (
-              "⚡ Submit Check-In & Mint Badge"
+              "Submit Check-In"
             )}
           </button>
         </form>
       </div>
 
-      {/* List of Created Events & QR Actions */}
       {eventsList.length > 0 && (
-        <section className="surface p-5 space-y-3">
+        <section className="surface space-y-3 p-5">
           <span className="eyebrow">Active Event Catalog</span>
           <h3 className="text-[16px] font-bold text-primary">Generated Event QR Codes</h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            {eventsList.map((evt) => (
+          <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
+            {eventsList.map((event) => (
               <div
-                key={evt.id}
-                className="rounded-[16px] border border-subtle bg-elevated-2 p-4 flex flex-col justify-between space-y-3"
+                className="flex flex-col justify-between space-y-3 rounded-[16px] border border-subtle bg-elevated-2 p-4"
+                key={event.id}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold text-amber bg-amber/10 border border-amber/20 px-2 py-0.5 rounded-full">
-                      ID #{evt.id}
+                    <span className="rounded-full border border-amber/20 bg-amber/10 px-2 py-0.5 text-[11px] font-extrabold text-amber">
+                      ID #{event.id}
                     </span>
-                    <span className="text-[11px] text-tertiary">
-                      {evt.attendeeCount} Check-ins
-                    </span>
+                    <span className="text-[11px] text-tertiary">{event.attendeeCount} check-ins</span>
                   </div>
-                  <h4 className="text-[15px] font-bold text-primary mt-2">{evt.name}</h4>
+                  <h4 className="mt-2 text-[15px] font-bold text-primary">{event.name}</h4>
                 </div>
 
                 <button
+                  className="secondary-button w-full !h-9 justify-center gap-1.5 !text-[12px]"
+                  onClick={() => showEventQR(event.id, event.name)}
                   type="button"
-                  onClick={() => showEventQR(evt.id, evt.name)}
-                  className="secondary-button w-full !h-9 !text-[12px] justify-center gap-1.5"
                 >
-                  <span>📱</span> Show QR Code
+                  Show QR Code
                 </button>
               </div>
             ))}
@@ -292,18 +285,15 @@ export default function OrganizerPanel({
 
       {qrCodeData && (
         <QRCodeModal
-          title={qrCodeData.title}
-          subtitle={qrCodeData.subtitle}
-          value={qrCodeData.value}
           onClose={() => setQrCodeData(null)}
+          subtitle={qrCodeData.subtitle}
+          title={qrCodeData.title}
+          value={qrCodeData.value}
         />
       )}
 
       {showScanner && (
-        <QRScannerModal
-          onScanSuccess={handleScanMemberSuccess}
-          onClose={() => setShowScanner(false)}
-        />
+        <QRScannerModal onClose={() => setShowScanner(false)} onScanSuccess={handleScanMemberSuccess} />
       )}
     </div>
   );
