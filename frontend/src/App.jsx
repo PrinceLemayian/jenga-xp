@@ -15,7 +15,7 @@ function shortAddress(address) {
 
 export default function App() {
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState("member");
+  const [currentPage, setCurrentPage] = useState("member"); // 'member' | 'organizer'
   const [walletQrVisible, setWalletQrVisible] = useState(false);
   const [scannerVisible, setScannerVisible] = useState(false);
   const [scannedEventId, setScannedEventId] = useState(null);
@@ -50,19 +50,36 @@ export default function App() {
     refetch,
   } = useJengaXP(signer, provider, address);
 
+  // Sync route with URL hash for true multi-page navigation (#member vs #organizer)
   useEffect(() => {
-    if (!isOrganizer && activeTab === "organizer") {
-      setActiveTab("member");
-    }
-  }, [activeTab, isOrganizer]);
+    const handleHashChange = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === "#organizer" || hash === "#/organizer") {
+        setCurrentPage("organizer");
+      } else {
+        setCurrentPage("member");
+      }
+    };
 
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Check URL query parameters for scanned eventId
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has("eventId")) {
       setScannedEventId(params.get("eventId"));
-      setActiveTab("member");
+      setCurrentPage("member");
+      window.location.hash = "#member";
     }
   }, []);
+
+  const navigateTo = (page) => {
+    setCurrentPage(page);
+    window.location.hash = `#${page}`;
+  };
 
   const copyAddress = async () => {
     if (!address) return;
@@ -79,8 +96,10 @@ export default function App() {
       const urlParams = new URLSearchParams(scanned.split("?")[1]);
       if (urlParams.has("eventId")) {
         setScannedEventId(urlParams.get("eventId"));
-        setActiveTab("member");
+        navigateTo("member");
       }
+    } else if (scanned.startsWith("0x")) {
+      alert(`Scanned Wallet Address: ${scanned}`);
     }
   };
 
@@ -105,7 +124,7 @@ export default function App() {
               <div className="text-left">
                 <p className="text-[16px] font-bold">Avalanche Fuji Network Required</p>
                 <p className="mt-1 text-[13px] leading-5 text-secondary">
-                  Switch MetaMask to Avalanche Fuji Testnet, Chain ID 43113, to use Jenga XP.
+                  Switch MetaMask to Avalanche Fuji Testnet (Chain ID 43113) to use Jenga XP.
                 </p>
               </div>
             </div>
@@ -121,35 +140,44 @@ export default function App() {
   return (
     <main className="min-h-screen bg-app px-4 py-5 text-primary selection:bg-amber selection:text-black">
       <div className="mx-auto max-w-md space-y-5">
+        {/* Navigation Bar */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="grid h-10 w-10 place-items-center rounded-2xl border border-subtle bg-elevated text-2xl">
-              🌱
+              {currentPage === "organizer" ? "👑" : "🌱"}
             </span>
             <div>
-              <p className="text-[16px] font-extrabold leading-tight">Jenga XP</p>
-              <p className="text-[11px] text-tertiary">Avalanche Fuji Testnet</p>
+              <p className="text-[16px] font-extrabold leading-tight">
+                {currentPage === "organizer" ? "Organizer Portal" : "Jenga XP"}
+              </p>
+              <p className="text-[11px] text-tertiary">
+                {currentPage === "organizer" ? "Admin Workspace" : "Member Reputation"}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              className="inline-flex h-9 items-center gap-1 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
-              onClick={() => setScannerVisible(true)}
-              title="Scan QR Code"
-              type="button"
-            >
-              Scan
-            </button>
+            {currentPage === "member" && (
+              <>
+                <button
+                  className="inline-flex h-9 items-center gap-1 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
+                  onClick={() => setScannerVisible(true)}
+                  title="Scan Event QR Code"
+                  type="button"
+                >
+                  <span>📷</span> Scan
+                </button>
 
-            <button
-              className="inline-flex h-9 items-center gap-1 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
-              onClick={() => setWalletQrVisible(true)}
-              title="My Wallet QR"
-              type="button"
-            >
-              QR
-            </button>
+                <button
+                  className="inline-flex h-9 items-center gap-1 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
+                  onClick={() => setWalletQrVisible(true)}
+                  title="My Wallet QR"
+                  type="button"
+                >
+                  <span>📱</span> QR
+                </button>
+              </>
+            )}
 
             <button
               className="inline-flex h-9 items-center gap-1.5 rounded-full border border-subtle bg-elevated-2 px-3 text-[12px] font-medium text-secondary active:scale-[0.97]"
@@ -162,33 +190,35 @@ export default function App() {
           </div>
         </header>
 
-        {isOrganizer && (
-          <nav className="surface flex items-center gap-1 p-1.5">
-            <button
-              className={`flex-1 rounded-[14px] py-2.5 text-[13px] font-bold transition-all ${
-                activeTab === "member"
-                  ? "border border-subtle bg-elevated-2 text-primary shadow-sm"
-                  : "text-tertiary hover:text-secondary"
-              }`}
-              onClick={() => setActiveTab("member")}
-              type="button"
-            >
-              Member Portal
-            </button>
+        {/* Multi-Page Navigation Bar */}
+        <nav className="surface flex items-center gap-1 p-1.5">
+          <button
+            className={`flex-1 rounded-[14px] py-2.5 text-[13px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+              currentPage === "member"
+                ? "border border-subtle bg-elevated-2 text-primary shadow-sm"
+                : "text-tertiary hover:text-secondary"
+            }`}
+            onClick={() => navigateTo("member")}
+            type="button"
+          >
+            <span>👤</span> Member Page
+          </button>
 
-            <button
-              className={`flex-1 rounded-[14px] py-2.5 text-[13px] font-bold transition-all ${
-                activeTab === "organizer"
-                  ? "border border-amber/30 bg-elevated-2 text-amber shadow-sm"
-                  : "text-tertiary hover:text-secondary"
-              }`}
-              onClick={() => setActiveTab("organizer")}
-              type="button"
-            >
-              Organizer Hub
-            </button>
-          </nav>
-        )}
+          <button
+            className={`flex-1 rounded-[14px] py-2.5 text-[13px] font-bold transition-all flex items-center justify-center gap-1.5 relative ${
+              currentPage === "organizer"
+                ? "border border-amber/40 bg-elevated-2 text-amber shadow-sm"
+                : "text-tertiary hover:text-secondary"
+            }`}
+            onClick={() => navigateTo("organizer")}
+            type="button"
+          >
+            <span>👑</span> Organizer Page
+            {isOrganizer && (
+              <span className="w-2 h-2 rounded-full bg-amber animate-pulse" />
+            )}
+          </button>
+        </nav>
 
         {!contractsReady && (
           <div className="rounded-[16px] border border-subtle bg-elevated-2 p-4 text-[13px] leading-5 text-secondary">
@@ -196,7 +226,8 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === "member" && (
+        {/* PAGE 1: Dedicated Member Dashboard Page */}
+        {currentPage === "member" && (
           <MemberDashboard
             badges={badges}
             communityAverage={communityAverage}
@@ -204,6 +235,7 @@ export default function App() {
             memberCount={memberCount}
             memberData={memberData}
             nextAction={nextAction}
+            onDismissScannedEvent={() => setScannedEventId(null)}
             onOpenScanner={() => setScannerVisible(true)}
             onOpenWalletQr={() => setWalletQrVisible(true)}
             scannedEventId={scannedEventId}
@@ -211,9 +243,11 @@ export default function App() {
           />
         )}
 
-        {isOrganizer && activeTab === "organizer" && (
+        {/* PAGE 2: Dedicated Organizer Hub Page */}
+        {currentPage === "organizer" && (
           <OrganizerPanel
             eventsList={eventsList}
+            isOrganizer={isOrganizer}
             onCheckIn={checkIn}
             onCreateEvent={createEvent}
             onRefetch={refetch}

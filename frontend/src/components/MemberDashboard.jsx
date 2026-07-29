@@ -33,6 +33,7 @@ export default function MemberDashboard({
   nextAction,
   xpToNext,
   scannedEventId,
+  onDismissScannedEvent,
   onOpenScanner,
   onOpenWalletQr,
 }) {
@@ -47,6 +48,7 @@ export default function MemberDashboard({
 
   return (
     <div className="space-y-4 animate-in fade-in">
+      {/* Scanned Event Check-In Pass */}
       {scannedEventId !== null && scannedEventId !== undefined && (
         <div className="surface space-y-3 border-amber/40 bg-amber/10 p-5 animate-in slide-in-from-top-2">
           <div className="flex items-center justify-between gap-3">
@@ -54,35 +56,40 @@ export default function MemberDashboard({
               <span className="text-3xl">🎟️</span>
               <div>
                 <span className="eyebrow text-amber">Event QR Scanned</span>
-                <h3 className="text-[16px] font-extrabold text-primary">Event #{scannedEventId}</h3>
+                <h3 className="text-[16px] font-extrabold text-primary">Event #{scannedEventId} Ready</h3>
               </div>
             </div>
             <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-400">
-              Ready
+              +{data.streak >= 3 ? "150 XP Bonus" : "100 XP"}
             </span>
           </div>
 
           <p className="text-[13px] leading-5 text-secondary">
-            Show your wallet QR code to the organizer. They will complete the on-chain check-in from the Organizer Hub.
+            Show your wallet QR code to the event organizer to complete check-in and unlock your Soulbound Badge!
           </p>
 
           <div className="flex items-center gap-2 pt-1">
             <button className="primary-button !h-10 flex-1 !text-[13px]" onClick={onOpenWalletQr} type="button">
-              Show My Wallet QR
+              📱 Show My Wallet QR
             </button>
-            <button className="secondary-button !h-10 !text-[13px]" onClick={onOpenScanner} type="button">
-              Scan Again
+            <button
+              className="secondary-button !h-10 !text-[13px]"
+              onClick={onDismissScannedEvent}
+              type="button"
+            >
+              Dismiss
             </button>
           </div>
         </div>
       )}
 
+      {/* Welcome Card for First-Time Members */}
       {!data.exists && (
         <div className="surface space-y-3 border-subtle bg-elevated-2 p-5 text-center">
           <span className="inline-block text-3xl">👋</span>
           <h3 className="text-[17px] font-extrabold text-primary">Welcome to Jenga XP</h3>
           <p className="mx-auto max-w-sm text-[13px] leading-5 text-secondary">
-            You have not been checked in yet. Ask an organizer to scan your wallet QR code to earn your first XP.
+            Build your community reputation on Avalanche Fuji. Ask an event host to scan your Wallet QR code to earn your first XP!
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
@@ -90,15 +97,16 @@ export default function MemberDashboard({
               onClick={onOpenWalletQr}
               type="button"
             >
-              My Wallet QR
+              📱 My Wallet QR
             </button>
             <button className="secondary-button !h-10 !text-[13px]" onClick={onOpenScanner} type="button">
-              Scan Event QR
+              📷 Scan Event QR
             </button>
           </div>
         </div>
       )}
 
+      {/* Member Reputation Pass Banner */}
       <section className="surface elevated-hero relative overflow-hidden p-6">
         <div className="flex items-start gap-4">
           <div
@@ -131,6 +139,7 @@ export default function MemberDashboard({
         </div>
       </section>
 
+      {/* Routledge Feedback Surfaces */}
       <LevelLadder currentLevel={data.level} />
       <CommunityStats attendance={data.totalAttendance} average={communityAverage} memberCount={memberCount} />
       <NextActionCard message={displayAction} />
